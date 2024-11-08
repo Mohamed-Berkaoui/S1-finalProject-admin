@@ -1,95 +1,84 @@
-import Image from "next/image";
-import styles from "./page.module.css";
 
-export default function Home() {
+import { deleteCookie, getCookie } from "cookies-next";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { baseUrl } from "./_utils/config";
+import Link from "next/link";
+export default async function Home() {
+  const user = await getCookie("user", { cookies })
+  ? JSON.parse(getCookie("user", { cookies }))
+  : null;
+  
+
+  if (!user) {console.log("user")
+    redirect("/login"); 
+  }
+  else {
+  const response = await fetch(baseUrl + "/api/auth/checkToken", {
+      method: "post",
+      headers: { authorization: user.token },
+    });
+    const json =await response.json()
+
+    if(json.message=="unauthorized"){
+      redirect('/login')
+    }
+  }
+  const res = await fetch(baseUrl + "/api/product/", { cache: "no-store" });
+  const json = await res.json();
+  async function handleDeleteProduct(formData) {
+    'use server'
+    const id=formData.get("id")
+  
+     const res= await fetch(baseUrl + "/api/product/delete/" + id, {
+        method: "delete",
+        headers: {authorization: user.token,"Content-type":"application/json" },
+      })
+      const json=await res.json()
+    if(json.status=="SUCCESS") redirect('/')
+
+  }
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    <div>
+      <table className="prodcuts-table">
+        <thead>
+          <tr>
+            <th>image</th>
+            <th>product id</th>
+            <th>title</th>
+            <th>price</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {json.data.map((prod) => (
+            <tr key={prod._id}>
+              <td>
+                <img src={baseUrl + prod.image} alt="" />
+              </td>
+              <td>{prod._id}</td>
+              <td>{prod.title} </td>
+              <td>{prod.price} </td>
+              <td>
+                <Link href={"/update/" + prod._id}>
+                  {" "}
+                  <button>update</button>
+                </Link>{" "}
+              </td>
+              <td>
+                {" "}
+               <form action={handleDeleteProduct}>
+                <input type="hidden" name="id" value={prod._id}/>
+               <button type="submit">
+                  delete
+                </button>
+               </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
